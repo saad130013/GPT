@@ -10,10 +10,13 @@ st.title("🤖 نموذج ذكاء اصطناعي لتصنيف الأصول حس
 # إدخال مفتاح API من المستخدم
 api_key = st.text_input("🔑 أدخل مفتاح OpenAI API الخاص بك:", type="password")
 
+# اختيار النموذج
+model = st.selectbox("🧠 اختر نموذج الذكاء الاصطناعي:", ["gpt-3.5-turbo", "gpt-4"])
+
 # إدخال وصف الأصل
 asset_name = st.text_input("📥 أدخل اسم الأصل (مثال: طابعة كانون، جهاز بصمة، مكيف شباك):")
 
-def classify_asset_with_gpt(asset_name, key):
+def classify_asset_with_gpt(asset_name, key, model_name):
     client = OpenAI(api_key=key)
 
     prompt = f"""أنت مساعد ذكي لتصنيف الأصول حسب دليل الأصول الحكومي السعودي.
@@ -32,7 +35,7 @@ def classify_asset_with_gpt(asset_name, key):
 """
 
     chat = client.chat.completions.create(
-        model="gpt-4",
+        model=model_name,
         messages=[
             {"role": "user", "content": prompt}
         ],
@@ -43,11 +46,10 @@ def classify_asset_with_gpt(asset_name, key):
 if api_key and asset_name:
     with st.spinner("🔍 جاري تصنيف الأصل باستخدام GPT..."):
         try:
-            result = classify_asset_with_gpt(asset_name, api_key)
+            result = classify_asset_with_gpt(asset_name, api_key, model)
             st.success("✅ تم التصنيف بنجاح:")
             st.markdown(result)
         except OpenAIError as e:
-            st.error("❌ حدث خطأ أثناء الاتصال بـ GPT:
-" + str(e))
+            st.error("❌ حدث خطأ أثناء الاتصال بـ GPT:\n" + str(e))
 elif asset_name and not api_key:
     st.warning("⚠️ الرجاء إدخال مفتاح OpenAI API أولاً.")
