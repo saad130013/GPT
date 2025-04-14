@@ -24,7 +24,7 @@ descriptions = df["Asset Description"].astype(str).tolist()
 # تحميل نموذج الذكاء الاصطناعي
 @st.cache_resource
 def load_model():
-    return SentenceTransformer('paraphrase-MiniLM-L6-v2')
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
 model = load_model()
 description_embeddings = model.encode(descriptions)
@@ -62,7 +62,14 @@ if user_input:
             for k, v in fields.items():
                 st.write(f"**{k}**: {v}")
 
-            # زر تصدير PDF
+            
+# تقييم المستخدم
+user_rating = st.radio("📊 هل هذا التصنيف دقيق؟", ["✅ نعم", "❌ لا"], key=f"rating_{i}")
+if user_rating:
+    st.success("شكرًا على تقييمك!")
+
+# زر تصدير PDF
+
             if st.button(f"📥 Export Match #{i+1} to PDF", key=f"pdf_button_{i}"):
                 class PDF(FPDF):
                     def header(self):
