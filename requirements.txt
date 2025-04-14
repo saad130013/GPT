@@ -1,5 +1,6 @@
 streamlit
 pandas
+sentence-transformers
 scikit-learn
 openpyxl
-fpdf2
+fpdf

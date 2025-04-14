@@ -1,13 +1,14 @@
 
 import streamlit as st
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fpdf import FPDF
 import io
 
-st.set_page_config(page_title="🔍 Smart Asset Lookup", layout="centered", page_icon="🔍")
-st.title("🔍 Smart Asset Description Autocomplete with PDF Export (Unicode)")
+# إعداد الصفحة
+st.set_page_config(page_title="Asset Classifier with PDF Export", layout="centered", page_icon="🧠")
+st.title("🧠 Asset Classification with AI + PDF Export")
 
 # تحميل البيانات
 @st.cache_data
@@ -20,71 +21,75 @@ def load_data():
 df = load_data()
 descriptions = df["Asset Description"].astype(str).tolist()
 
-# إنشاء TF-IDF للنصوص
+# تحميل نموذج الذكاء الاصطناعي
 @st.cache_resource
-def create_vectorizer():
-    vectorizer = TfidfVectorizer()
-    vectors = vectorizer.fit_transform(descriptions)
-    return vectorizer, vectors
+def load_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
-vectorizer, description_vectors = create_vectorizer()
+model = load_model()
+description_embeddings = model.encode(descriptions)
 
-# إدخال المستخدم مع اقتراحات
-user_input = st.text_input("✍️ Start typing asset description:")
+# إدخال المستخدم
+user_input = st.text_input("📝 Enter asset description (e.g. printer, AC, scanner):")
 
 if user_input:
-    user_vec = vectorizer.transform([user_input])
-    similarities = cosine_similarity(user_vec, description_vectors).flatten()
-    top_indices = similarities.argsort()[-5:][::-1]
+    user_embedding = model.encode([user_input])
+    similarities = cosine_similarity(user_embedding, description_embeddings).flatten()
+    top_indices = similarities.argsort()[-3:][::-1]
 
-    suggestions = [descriptions[i] for i in top_indices]
-    selected_suggestion = st.selectbox("💡 Suggestions:", suggestions)
+    st.markdown("### ✅ Top 3 matches:")
 
-    if selected_suggestion:
-        st.markdown("### 🧾 Selected Description:")
-        st.markdown(f"**{selected_suggestion}**")
-
-        selected_row = df[df["Asset Description"] == selected_suggestion].iloc[0]
+    for i, idx in enumerate(top_indices):
+        score = round(similarities[idx] * 100, 2)
+        desc = df.iloc[idx]["Asset Description"]
+        st.markdown(f"**{i+1}.** `{desc}` — Match: **{score}%**")
 
         with st.expander("📊 Classification Details"):
-            fields = [
-                "Level 1 FA Module Code", "Level 1 FA Module - English Description",
-                "Level 2 FA Module Code", "Level 2 FA Module - English Description",
-                "Level 3 FA Module Code", "Level 3 FA Module - English Description",
-                "accounting group Code", "accounting group English Description",
-                "Asset Code For Accounting Purpose"
-            ]
-            for field in fields:
-                st.write(f"**{field}**:", selected_row.get(field, ""))
+            selected_data = df.iloc[idx]
+            fields = {
+                "Asset Description": desc,
+                "Level 1 FA Module Code": selected_data.get("Level 1 FA Module Code", ""),
+                "Level 1 FA Module - English Description": selected_data.get("Level 1 FA Module - English Description", ""),
+                "Level 2 FA Module Code": selected_data.get("Level 2 FA Module Code", ""),
+                "Level 2 FA Module - English Description": selected_data.get("Level 2 FA Module - English Description", ""),
+                "Level 3 FA Module Code": selected_data.get("Level 3 FA Module Code", ""),
+                "Level 3 FA Module - English Description": selected_data.get("Level 3 FA Module - English Description", ""),
+                "Accounting Group Code": selected_data.get("accounting group Code", ""),
+                "Accounting Group Description": selected_data.get("accounting group English Description", ""),
+                "Asset Code For Accounting Purpose": selected_data.get("Asset Code For Accounting Purpose", "")
+            }
 
-            if st.button("📥 Export to PDF"):
+            for k, v in fields.items():
+                st.write(f"**{k}**: {v}")
+
+            
+# تقييم المستخدم
+user_rating = st.radio("📊 هل هذا التصنيف دقيق؟", ["✅ نعم", "❌ لا"], key=f"rating_{i}")
+if user_rating:
+    st.success("شكرًا على تقييمك!")
+
+# زر تصدير PDF
+
+            if st.button(f"📥 Export Match #{i+1} to PDF", key=f"pdf_button_{i}"):
                 class PDF(FPDF):
-                    def __init__(self):
-                        super().__init__()
-                        self.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-                        self.set_font('DejaVu', '', 12)
-
                     def header(self):
-                        self.set_font("DejaVu", "B", 14)
+                        self.set_font("Arial", "B", 14)
                         self.cell(0, 10, "Asset Classification Report", ln=True, align="C")
 
                     def footer(self):
                         self.set_y(-15)
-                        self.set_font("DejaVu", "I", 8)
+                        self.set_font("Arial", "I", 8)
                         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
                     def add_data(self, data_dict):
-                        self.set_font("DejaVu", "", 12)
+                        self.set_font("Arial", "", 12)
                         for k, v in data_dict.items():
                             self.cell(60, 10, k + ":", border=0)
                             self.multi_cell(0, 10, str(v), border=0)
 
-                export_data = {field: selected_row.get(field, "") for field in fields}
-                export_data["Asset Description"] = selected_suggestion
-
                 pdf = PDF()
                 pdf.add_page()
-                pdf.add_data(export_data)
+                pdf.add_data(fields)
 
                 pdf_buffer = io.BytesIO()
                 pdf.output(pdf_buffer)
