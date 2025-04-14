@@ -1,55 +1,49 @@
 
 import streamlit as st
-from openai import OpenAI
-from openai import OpenAIError
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# إعداد واجهة Streamlit
-st.set_page_config(page_title="تصنيف الأصول باستخدام GPT", layout="centered", page_icon="🤖")
-st.title("🤖 نموذج ذكاء اصطناعي لتصنيف الأصول حسب الدليل الحكومي")
+# تحميل البيانات
+@st.cache_data
+def load_data():
+    df = pd.read_excel("assetv4.xlsx", header=1)
+    df = df[df.columns.dropna()]
+    df = df.dropna(subset=["Asset Description"])
+    return df
 
-# إدخال مفتاح API من المستخدم
-api_key = st.text_input("🔑 أدخل مفتاح OpenAI API الخاص بك:", type="password")
+df = load_data()
+descriptions = df["Asset Description"].astype(str).tolist()
 
-# اختيار النموذج
-model = st.selectbox("🧠 اختر نموذج الذكاء الاصطناعي:", ["gpt-3.5-turbo", "gpt-4"])
+# إنشاء تمثيل رقمي باستخدام TF-IDF
+vectorizer = TfidfVectorizer().fit(descriptions)
+description_vectors = vectorizer.transform(descriptions)
 
-# إدخال وصف الأصل
-asset_name = st.text_input("📥 أدخل اسم الأصل (مثال: طابعة كانون، جهاز بصمة، مكيف شباك):")
+# واجهة المستخدم
+st.set_page_config(page_title="تصنيف الأصول - ذكاء صناعي محلي", layout="centered", page_icon="🧠")
+st.title("🧠 نموذج ذكاء محلي لتصنيف الأصول")
 
-def classify_asset_with_gpt(asset_name, key, model_name):
-    client = OpenAI(api_key=key)
+user_input = st.text_input("📝 أدخل اسم الأصل (مثال: طابعة، حاسب، مكيف):")
 
-    prompt = f"""أنت مساعد ذكي لتصنيف الأصول حسب دليل الأصول الحكومي السعودي.
+if user_input:
+    user_vec = vectorizer.transform([user_input])
+    similarities = cosine_similarity(user_vec, description_vectors).flatten()
+    top_indices = similarities.argsort()[-3:][::-1]
 
-مهمتك:
-عند إعطائك وصفًا مختصرًا لأصل (مثل: "طابعة كانون"، "جهاز بصمة"، "مكيف شباك")، قم بتحليل الوصف واقتراح التصنيف المحاسبي المناسب من حيث:
-- رمز التصنيف المحاسبي (مستوى 1، 2، 3)
-- اسم التصنيف المحاسبي بالعربي والإنجليزي لكل مستوى
-- رمز المجموعة المحاسبية + وصفها بالعربي والإنجليزي
-- رمز الأصل لغرض المحاسبة
+    st.markdown("### 🔍 أعلى 3 تطابقات:")
+    for i, idx in enumerate(top_indices):
+        score = round(similarities[idx]*100, 2)
+        match_desc = df.iloc[idx]["Asset Description"]
+        st.markdown(f"**{i+1}.** `{match_desc}` — تطابق بنسبة: **{score}%**")
 
-📌 لا تخترع تصنيفات، اعتمد فقط على تصنيفات الأصول الحكومية المعروفة.
-
-صنف الأصل التالي بدقة:
-"{asset_name}"
-"""
-
-    chat = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
-    return chat.choices[0].message.content
-
-if api_key and asset_name:
-    with st.spinner("🔍 جاري تصنيف الأصل باستخدام GPT..."):
-        try:
-            result = classify_asset_with_gpt(asset_name, api_key, model)
-            st.success("✅ تم التصنيف بنجاح:")
-            st.markdown(result)
-        except OpenAIError as e:
-            st.error("❌ حدث خطأ أثناء الاتصال بـ GPT:\n" + str(e))
-elif asset_name and not api_key:
-    st.warning("⚠️ الرجاء إدخال مفتاح OpenAI API أولاً.")
+        # عرض التصنيف المحاسبي
+        with st.expander("📊 التصنيف المحاسبي"):
+            fields = [
+                "Level 1 FA Module Code", "Level 1 FA Module - Arabic Description", "Level 1 FA Module - English Description",
+                "Level 2 FA Module Code", "Level 2 FA Module - Arabic Description", "Level 2 FA Module - English Description",
+                "Level 3 FA Module Code", "Level 3 FA Module - Arabic Description", "Level 3 FA Module - English Description",
+                "accounting group Code", "accounting group Arabic Description", "accounting group English Description",
+                "Asset Code For Accounting Purpose"
+            ]
+            for field in fields:
+                st.write(f"**{field}**:", df.iloc[idx].get(field, ""))
