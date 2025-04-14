@@ -2,17 +2,16 @@
 import streamlit as st
 import openai
 
-# إعداد صفحة Streamlit
-st.set_page_config(page_title="تصنيف الأصول باستخدام GPT", layout="centered", page_icon="🧠")
-st.title("🤖 تصنيف ذكي للأصول حسب دليل التصنيف الحكومي")
+# إعداد واجهة Streamlit
+st.set_page_config(page_title="تصنيف الأصول باستخدام GPT", layout="centered", page_icon="🤖")
+st.title("🤖 نموذج ذكاء اصطناعي لتصنيف الأصول حسب الدليل الحكومي")
 
-# إدخال مفتاح API
-api_key = st.text_input("🔐 أدخل مفتاح OpenAI API:", type="password", help="لن يتم حفظ المفتاح. يُستخدم فقط أثناء الجلسة.")
+# إدخال مفتاح API من المستخدم
+api_key = st.text_input("🔑 أدخل مفتاح OpenAI API الخاص بك:", type="password")
 
 # إدخال وصف الأصل
-asset_desc = st.text_input("📝 أدخل وصف الأصل (مثل: طابعة كانون، حاسب مكتبي، مكيف شباك):")
+asset_name = st.text_input("📥 أدخل اسم الأصل (مثال: طابعة كانون، جهاز بصمة، مكيف شباك):")
 
-# دالة إرسال الطلب إلى GPT
 def classify_asset_with_gpt(asset_name, key):
     prompt = f"""أنت مساعد ذكي لتصنيف الأصول حسب دليل الأصول الحكومي السعودي.
 
@@ -20,7 +19,7 @@ def classify_asset_with_gpt(asset_name, key):
 عند إعطائك وصفًا مختصرًا لأصل (مثل: "طابعة كانون"، "جهاز بصمة"، "مكيف شباك")، قم بتحليل الوصف واقتراح التصنيف المحاسبي المناسب من حيث:
 - رمز التصنيف المحاسبي (مستوى 1، 2، 3)
 - اسم التصنيف المحاسبي بالعربي والإنجليزي لكل مستوى
-- رمز المجموعة المحاسبية + وصفها
+- رمز المجموعة المحاسبية + وصفها بالعربي والإنجليزي
 - رمز الأصل لغرض المحاسبة
 
 📌 لا تخترع تصنيفات، اعتمد فقط على تصنيفات الأصول الحكومية المعروفة.
@@ -28,6 +27,7 @@ def classify_asset_with_gpt(asset_name, key):
 صنف الأصل التالي بدقة:
 "{asset_name}"
 """
+
     openai.api_key = key
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -36,15 +36,14 @@ def classify_asset_with_gpt(asset_name, key):
     )
     return response.choices[0].message.content
 
-# تنفيذ العملية
-if api_key and asset_desc:
+if api_key and asset_name:
     with st.spinner("🔍 جاري تصنيف الأصل باستخدام GPT..."):
         try:
-            result = classify_asset_with_gpt(asset_desc, api_key)
+            result = classify_asset_with_gpt(asset_name, api_key)
             st.success("✅ تم التصنيف بنجاح:")
             st.markdown(result)
         except Exception as e:
             st.error(f"❌ خطأ أثناء الاتصال بـ GPT:
 {e}")
-elif asset_desc and not api_key:
+elif asset_name and not api_key:
     st.warning("⚠️ الرجاء إدخال مفتاح OpenAI API أولاً.")
