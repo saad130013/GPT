@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from fpdf import FPDF
+import io
 
 st.set_page_config(page_title="🔍 Smart Asset Lookup", layout="centered", page_icon="🔍")
 st.title("🔍 Smart Asset Description Autocomplete")
@@ -52,46 +54,39 @@ if user_input:
                 "accounting group Code", "accounting group English Description",
                 "Asset Code For Accounting Purpose"
             ]
-            
-for field in fields:
-    st.write(f"**{field}**:", selected_row.get(field, ""))
-
-# زر تصدير PDF
-import io
-from fpdf import FPDF
-
-if st.button("📥 Export to PDF"):
-    class PDF(FPDF):
-        def header(self):
-            self.set_font("Arial", "B", 14)
-            self.cell(0, 10, "Asset Classification Report", ln=True, align="C")
-
-        def footer(self):
-            self.set_y(-15)
-            self.set_font("Arial", "I", 8)
-            self.cell(0, 10, f"Page {self.page_no()}", align="C")
-
-        def add_data(self, data_dict):
-            self.set_font("Arial", "", 12)
-            for k, v in data_dict.items():
-                self.cell(60, 10, k + ":", border=0)
-                self.multi_cell(0, 10, str(v), border=0)
-
-    export_data = {field: selected_row.get(field, "") for field in fields}
-    export_data["Asset Description"] = selected_suggestion
-
-    pdf = PDF()
-    pdf.add_page()
-    pdf.add_data(export_data)
-
-    pdf_buffer = io.BytesIO()
-    pdf.output(pdf_buffer)
-
-    st.download_button(
-        label="⬇️ Download PDF",
-        data=pdf_buffer.getvalue(),
-        file_name="asset_classification.pdf",
-        mime="application/pdf"
-    )
-
+            for field in fields:
                 st.write(f"**{field}**:", selected_row.get(field, ""))
+
+            if st.button("📥 Export to PDF"):
+                class PDF(FPDF):
+                    def header(self):
+                        self.set_font("Arial", "B", 14)
+                        self.cell(0, 10, "Asset Classification Report", ln=True, align="C")
+
+                    def footer(self):
+                        self.set_y(-15)
+                        self.set_font("Arial", "I", 8)
+                        self.cell(0, 10, f"Page {self.page_no()}", align="C")
+
+                    def add_data(self, data_dict):
+                        self.set_font("Arial", "", 12)
+                        for k, v in data_dict.items():
+                            self.cell(60, 10, k + ":", border=0)
+                            self.multi_cell(0, 10, str(v), border=0)
+
+                export_data = {field: selected_row.get(field, "") for field in fields}
+                export_data["Asset Description"] = selected_suggestion
+
+                pdf = PDF()
+                pdf.add_page()
+                pdf.add_data(export_data)
+
+                pdf_buffer = io.BytesIO()
+                pdf.output(pdf_buffer)
+
+                st.download_button(
+                    label="⬇️ Download PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name="asset_classification.pdf",
+                    mime="application/pdf"
+                )
