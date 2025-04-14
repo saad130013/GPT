@@ -7,7 +7,7 @@ from fpdf import FPDF
 import io
 
 st.set_page_config(page_title="🔍 Smart Asset Lookup", layout="centered", page_icon="🔍")
-st.title("🔍 Smart Asset Description Autocomplete")
+st.title("🔍 Smart Asset Description Autocomplete with PDF Export (Unicode)")
 
 # تحميل البيانات
 @st.cache_data
@@ -59,17 +59,22 @@ if user_input:
 
             if st.button("📥 Export to PDF"):
                 class PDF(FPDF):
+                    def __init__(self):
+                        super().__init__()
+                        self.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+                        self.set_font('DejaVu', '', 12)
+
                     def header(self):
-                        self.set_font("Arial", "B", 14)
+                        self.set_font("DejaVu", "B", 14)
                         self.cell(0, 10, "Asset Classification Report", ln=True, align="C")
 
                     def footer(self):
                         self.set_y(-15)
-                        self.set_font("Arial", "I", 8)
+                        self.set_font("DejaVu", "I", 8)
                         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
                     def add_data(self, data_dict):
-                        self.set_font("Arial", "", 12)
+                        self.set_font("DejaVu", "", 12)
                         for k, v in data_dict.items():
                             self.cell(60, 10, k + ":", border=0)
                             self.multi_cell(0, 10, str(v), border=0)
