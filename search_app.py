@@ -1,6 +1,7 @@
 
 import streamlit as st
-import openai
+from openai import OpenAI
+from openai import OpenAIError
 
 # إعداد واجهة Streamlit
 st.set_page_config(page_title="تصنيف الأصول باستخدام GPT", layout="centered", page_icon="🤖")
@@ -13,6 +14,8 @@ api_key = st.text_input("🔑 أدخل مفتاح OpenAI API الخاص بك:", 
 asset_name = st.text_input("📥 أدخل اسم الأصل (مثال: طابعة كانون، جهاز بصمة، مكيف شباك):")
 
 def classify_asset_with_gpt(asset_name, key):
+    client = OpenAI(api_key=key)
+
     prompt = f"""أنت مساعد ذكي لتصنيف الأصول حسب دليل الأصول الحكومي السعودي.
 
 مهمتك:
@@ -28,13 +31,14 @@ def classify_asset_with_gpt(asset_name, key):
 "{asset_name}"
 """
 
-    openai.api_key = key
-    response = openai.ChatCompletion.create(
+    chat = client.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
         temperature=0.2
     )
-    return response.choices[0].message.content
+    return chat.choices[0].message.content
 
 if api_key and asset_name:
     with st.spinner("🔍 جاري تصنيف الأصل باستخدام GPT..."):
@@ -42,7 +46,8 @@ if api_key and asset_name:
             result = classify_asset_with_gpt(asset_name, api_key)
             st.success("✅ تم التصنيف بنجاح:")
             st.markdown(result)
-        except Exception as e:
-            st.error("❌ حدث خطأ أثناء الاتصال بـ GPT:\n" + str(e))
+        except OpenAIError as e:
+            st.error("❌ حدث خطأ أثناء الاتصال بـ GPT:
+" + str(e))
 elif asset_name and not api_key:
     st.warning("⚠️ الرجاء إدخال مفتاح OpenAI API أولاً.")
