@@ -4,6 +4,9 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# ✅ السطر الأول بعد الاستيراد
+st.set_page_config(page_title="تصنيف الأصول - ذكاء صناعي محلي", layout="centered", page_icon="🧠")
+
 # تحميل البيانات
 @st.cache_data
 def load_data():
@@ -20,7 +23,6 @@ vectorizer = TfidfVectorizer().fit(descriptions)
 description_vectors = vectorizer.transform(descriptions)
 
 # واجهة المستخدم
-st.set_page_config(page_title="تصنيف الأصول - ذكاء صناعي محلي", layout="centered", page_icon="🧠")
 st.title("🧠 نموذج ذكاء محلي لتصنيف الأصول")
 
 user_input = st.text_input("📝 أدخل اسم الأصل (مثال: طابعة، حاسب، مكيف):")
