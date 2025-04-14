@@ -43,7 +43,6 @@ if api_key and asset_name:
             st.success("✅ تم التصنيف بنجاح:")
             st.markdown(result)
         except Exception as e:
-            st.error(f"❌ خطأ أثناء الاتصال بـ GPT:
-{e}")
+            st.error("❌ حدث خطأ أثناء الاتصال بـ GPT:\n" + str(e))
 elif asset_name and not api_key:
     st.warning("⚠️ الرجاء إدخال مفتاح OpenAI API أولاً.")
